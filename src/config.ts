@@ -7,7 +7,7 @@ export const config = {
     sortDirection: "desc",
     isPolitical: false, // Set to false for "All ads", true for "Issues, elections or politics"
     maxAdsPerDay: 1000,
-    headless: false, // Set to true for production, false for debugging
+    headless: process.env.NODE_ENV === 'production' || process.env.HEADLESS === 'true', // headless on Render (no X server)
 };
 
 export function getSearchUrl(keyword: string, country?: string) {
