@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://facebook-backend-nd1f.onrender.com' : '');
 
 function createApiClient(): AxiosInstance {
     const client = axios.create({

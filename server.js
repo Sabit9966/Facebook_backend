@@ -106,18 +106,19 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// MongoDB connection
+// MongoDB connection - must be ready before accepting requests (fixes Render cold start 500s)
 const MONGODB_URI = process.env.MONGODB_URI;
 
-mongoose.connect(MONGODB_URI)
-    .then(async () => {
-        console.log('API connected to MongoDB');
-        console.log('Database Name:', mongoose.connection.name);
-        const count = await Ad.countDocuments();
-        console.log('Ad model collection:', Ad.collection.name);
-        console.log('Total ads in DB:', count);
-    })
-    .catch(err => console.error('MongoDB connection error:', err));
+async function ensureMongoConnected() {
+    if (mongoose.connection.readyState === 1) return;
+    if (!MONGODB_URI) {
+        console.error('MONGODB_URI is not set');
+        return;
+    }
+    await mongoose.connect(MONGODB_URI);
+    console.log('API connected to MongoDB');
+    console.log('Database Name:', mongoose.connection.name);
+}
 
 // API Routes (all data routes require auth and are scoped by req.userId)
 app.get('/api/ads', requireAuth, async (req, res) => {
@@ -151,13 +152,21 @@ app.get('/api/ads', requireAuth, async (req, res) => {
 // Get unique keywords for filtering (user-scoped)
 app.get('/api/keywords', requireAuth, async (req, res) => {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ error: 'Database not ready', code: 'DB_NOT_READY' });
+        }
         const userId = req.userId;
+        if (!userId || typeof userId !== 'string') {
+            return res.status(400).json({ error: 'Invalid user context' });
+        }
         const filter = { userId };
         const keywords = await Ad.distinct('keyword', filter);
-        res.json(keywords.filter(Boolean));
+        const list = Array.isArray(keywords) ? keywords : [];
+        res.json(list.filter(Boolean));
     } catch (err) {
         console.error('Keywords fetch error:', err);
-        res.status(500).json({ error: 'Failed to fetch keywords' });
+        const msg = err && typeof err === 'object' && err.message ? err.message : 'Failed to fetch keywords';
+        res.status(500).json({ error: 'Failed to fetch keywords', details: process.env.NODE_ENV === 'development' ? msg : undefined });
     }
 });
 
@@ -896,38 +905,49 @@ process.on('SIGINT', async () => {
     });
 });
 
-app.listen(Number(PORT) || 5001, '0.0.0.0', async () => {
-    console.log(`🚀 Production-ready server running on http://localhost:${PORT}`);
-    console.log(`📊 API Endpoints:`);
-    console.log(`   GET  /api/ads - Fetch all ads`);
-    console.log(`   GET  /api/ads/keyword/:keyword - Fetch ads by keyword`);
-    console.log(`   GET  /api/stats - Get statistics`);
-    console.log(`   POST /api/scrape - Start scraping with dynamic limits`);
-    console.log(`   POST /api/scrape/stop - Stop scraping`);
-    console.log(`   GET  /api/scrape/status - Get scraping status`);
-    console.log(`   GET  /api/missions - Fetch all missions`);
-    console.log(`   DELETE /api/missions/:id - Delete single mission`);
-    console.log(`   POST /api/missions/batch-delete - Bulk delete missions`);
-    console.log(`   DELETE /api/ads/:id - Delete single ad`);
-    console.log(`   POST /api/ads/batch-delete - Bulk delete ads`);
-    console.log(`   GET  /api/schedulers - Fetch all schedulers`);
-    console.log(`   POST /api/schedulers - Create new scheduler`);
-    console.log(`   PUT  /api/schedulers/:id - Update scheduler`);
-    console.log(`   DELETE /api/schedulers/:id - Delete scheduler`);
-    console.log(`   GET  /api/schedulers/status - Get scheduler status`);
-
-    // Initialize the scheduler service
+(async () => {
     try {
-        await schedulerService.start();
-        console.log(`📅 Enhanced Scheduler service initialized successfully`);
-    } catch (error) {
-        console.error(`❌ Failed to initialize scheduler:`, error);
+        await ensureMongoConnected();
+        const dbCount = await Ad.countDocuments();
+        console.log('Ad collection:', Ad.collection.name, 'Total ads:', dbCount);
+    } catch (err) {
+        console.error('MongoDB connection error:', err);
     }
-}).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.error(`Error: Port ${PORT} is already in use. Please kill the process using it or use a different port.`);
-        process.exit(1);
-    } else {
-        console.error('Server error:', err);
-    }
-});
+
+    const server = app.listen(Number(PORT) || 5001, '0.0.0.0', async () => {
+        console.log(`🚀 Production-ready server running on http://localhost:${PORT}`);
+        console.log(`📊 API Endpoints:`);
+        console.log(`   GET  /api/ads - Fetch all ads`);
+        console.log(`   GET  /api/ads/keyword/:keyword - Fetch ads by keyword`);
+        console.log(`   GET  /api/stats - Get statistics`);
+        console.log(`   POST /api/scrape - Start scraping with dynamic limits`);
+        console.log(`   POST /api/scrape/stop - Stop scraping`);
+        console.log(`   GET  /api/scrape/status - Get scraping status`);
+        console.log(`   GET  /api/missions - Fetch all missions`);
+        console.log(`   DELETE /api/missions/:id - Delete single mission`);
+        console.log(`   POST /api/missions/batch-delete - Bulk delete missions`);
+        console.log(`   DELETE /api/ads/:id - Delete single ad`);
+        console.log(`   POST /api/ads/batch-delete - Bulk delete ads`);
+        console.log(`   GET  /api/schedulers - Fetch all schedulers`);
+        console.log(`   POST /api/schedulers - Create new scheduler`);
+        console.log(`   PUT  /api/schedulers/:id - Update scheduler`);
+        console.log(`   DELETE /api/schedulers/:id - Delete scheduler`);
+        console.log(`   GET  /api/schedulers/status - Get scheduler status`);
+
+        try {
+            await schedulerService.start();
+            console.log(`📅 Enhanced Scheduler service initialized successfully`);
+        } catch (error) {
+            console.error(`❌ Failed to initialize scheduler:`, error);
+        }
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`Error: Port ${PORT} is already in use. Please kill the process using it or use a different port.`);
+            process.exit(1);
+        } else {
+            console.error('Server error:', err);
+        }
+    });
+})();

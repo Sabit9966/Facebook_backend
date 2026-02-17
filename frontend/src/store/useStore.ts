@@ -138,11 +138,26 @@ export const useStore = create<AppState>((set, get) => ({
         }
     },
     fetchKeywords: async () => {
-        try {
+        const doFetch = async (): Promise<void> => {
             const response = await api.get('/api/keywords');
             set({ keywords: response.data ?? [] });
-        } catch (err) {
-            console.error('Error fetching keywords:', err);
+        };
+        try {
+            await doFetch();
+        } catch (err: unknown) {
+            const status = err && typeof err === 'object' && 'response' in err
+                ? (err as { response?: { status?: number } }).response?.status
+                : 0;
+            if (status === 500 || status === 503) {
+                await new Promise((r) => setTimeout(r, 1500));
+                try {
+                    await doFetch();
+                } catch (retryErr) {
+                    console.error('Error fetching keywords (after retry):', retryErr);
+                }
+            } else {
+                console.error('Error fetching keywords:', err);
+            }
         }
     },
     fetchMissions: async () => {
