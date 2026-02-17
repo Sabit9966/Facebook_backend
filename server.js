@@ -238,8 +238,8 @@ app.post('/api/scrape', requireAuth, async (req, res) => {
     });
     await mission.save();
 
-    // Build scraper arguments with filters
-    const scraperArgs = ['tsx', 'src/scraper.ts', `"${keyword}"`, '--max-ads', maxAds.toString(), '--daily-limit', dailyQuota.toString(), '--mission-id', mission._id.toString()];
+    // Build scraper arguments with filters (use node --import tsx for Render - no tsx binary permission)
+    const scraperArgs = ['--import', 'tsx', 'src/scraper.ts', `"${keyword}"`, '--max-ads', maxAds.toString(), '--daily-limit', dailyQuota.toString(), '--mission-id', mission._id.toString()];
 
     // Add filter arguments if provided
     if (filters) {
@@ -272,8 +272,8 @@ app.post('/api/scrape', requireAuth, async (req, res) => {
     });
 
     // Spawn scraper process with dynamic parameters and filters
-    // Explicitly pass env so the child process uses the same MONGODB_URI
-    const scraper = spawn('npx', scraperArgs, {
+    // Use process.execPath (node) + --import tsx to avoid tsx binary permission denied on Render
+    const scraper = spawn(process.execPath, scraperArgs, {
         shell: true,
         detached: false,
         stdio: ['inherit', 'pipe', 'pipe'],

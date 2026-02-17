@@ -176,8 +176,8 @@ export class SchedulerService {
 
         console.log(`📋 [${executionId}] Mission created: ${mission._id}`);
 
-        const scraperArgs = ['tsx', 'src/scraper.ts', `"${keyword}"`, '--max-ads', maxAdsPerRequest.toString(), '--daily-limit', dailyLimit.toString(), '--mission-id', mission._id.toString()];
-        const scraper = spawn('npx', scraperArgs, {
+        const scraperArgs = ['--import', 'tsx', 'src/scraper.ts', `"${keyword}"`, '--max-ads', maxAdsPerRequest.toString(), '--daily-limit', dailyLimit.toString(), '--mission-id', mission._id.toString()];
+        const scraper = spawn(process.execPath, scraperArgs, {
             shell: true,
             detached: false,
             stdio: ['inherit', 'pipe', 'pipe'],
