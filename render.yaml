@@ -4,9 +4,11 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && PLAYWRIGHT_BROWSERS_PATH=./playwright-browsers npx playwright install chromium
     startCommand: npm start
     envVars:
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/project/src/playwright-browsers
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
