@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import path from 'path';
 import { spawn } from 'child_process';
 import { Scheduler, Mission, connectDB } from './db.js';
 
@@ -177,12 +178,14 @@ export class SchedulerService {
         console.log(`📋 [${executionId}] Mission created: ${mission._id}`);
 
         const scraperArgs = ['--import', 'tsx', 'src/scraper.ts', `"${keyword}"`, '--max-ads', maxAdsPerRequest.toString(), '--daily-limit', dailyLimit.toString(), '--mission-id', mission._id.toString()];
+        const playwrightPath = path.resolve(process.cwd(), 'playwright-browsers');
         const scraper = spawn(process.execPath, scraperArgs, {
             shell: true,
             detached: false,
             stdio: ['inherit', 'pipe', 'pipe'],
             env: {
                 ...process.env,
+                PLAYWRIGHT_BROWSERS_PATH: playwrightPath,
                 NODE_OPTIONS: '--max-old-space-size=4096' // Increase memory limit
             }
         });

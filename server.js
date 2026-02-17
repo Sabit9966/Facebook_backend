@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { spawn, exec } from 'child_process';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
@@ -273,11 +274,13 @@ app.post('/api/scrape', requireAuth, async (req, res) => {
 
     // Spawn scraper process with dynamic parameters and filters
     // Use process.execPath (node) + --import tsx to avoid tsx binary permission denied on Render
+    const playwrightPath = path.resolve(process.cwd(), 'playwright-browsers');
+    const scraperEnv = { ...process.env, PLAYWRIGHT_BROWSERS_PATH: playwrightPath };
     const scraper = spawn(process.execPath, scraperArgs, {
         shell: true,
         detached: false,
         stdio: ['inherit', 'pipe', 'pipe'],
-        env: { ...process.env }
+        env: scraperEnv
     });
 
     // Store reference in Map for multi-process management
