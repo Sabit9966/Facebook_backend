@@ -1,0 +1,4 @@
+﻿[dotenv@17.2.4] injecting env (1) from .env -- tip: ≡ƒôí add observability to secrets: https://dotenvx.com/ops
+TOTAL_ADS_FEB_11: 1343
+MISSIONS_FEB_11: 1
+ - admission: status=completed, newAds=1343, limit=30000/30000
