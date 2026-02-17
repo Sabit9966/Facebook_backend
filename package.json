@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "npx tsx src/scraper.ts",
+    "start": "npx tsx server.js",
+    "scraper": "npx tsx src/scraper.ts",
     "api": "npx tsx server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

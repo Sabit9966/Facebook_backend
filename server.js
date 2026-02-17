@@ -33,9 +33,18 @@ app.use((req, res, next) => {
     next();
 });
 
-// CORS configuration
+// CORS configuration: localhost + Render frontend URL from env
+const corsOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175'
+];
+if (process.env.FRONTEND_URL) {
+    corsOrigins.push(process.env.FRONTEND_URL);
+}
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -44,6 +53,11 @@ app.use(cors({
 // Middleware to parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Health check for Render
+app.get('/', (req, res) => {
+    res.json({ status: 'ok', service: 'facebook-backend', timestamp: new Date().toISOString() });
+});
 
 // Auth: login (no auth required)
 app.post('/api/auth/login', async (req, res) => {
@@ -882,7 +896,7 @@ process.on('SIGINT', async () => {
     });
 });
 
-app.listen(PORT, async () => {
+app.listen(Number(PORT) || 5001, '0.0.0.0', async () => {
     console.log(`🚀 Production-ready server running on http://localhost:${PORT}`);
     console.log(`📊 API Endpoints:`);
     console.log(`   GET  /api/ads - Fetch all ads`);
